@@ -1,4 +1,7 @@
 numpy
 pillow
-# optional, only for the --show live window:
+# optional, only for reassemble.py's --show live window:
 # opencv-python
+# optional, only for the spectrum.py diagnostic (talks to librtlsdr.dll
+# directly via ctypes, so no pyrtlsdr):
+# matplotlib

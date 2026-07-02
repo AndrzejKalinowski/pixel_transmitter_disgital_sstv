@@ -56,6 +56,7 @@ code.
     ├── reassemble.py          # JSON in -> de-whiten -> CRC -> paint out.png
     ├── protocol.py            # constants mirrored from firmware protocol.h
     ├── dewhiten.py            # CC1101 PN9 sequence (self-tested vs TI DN509)
+    ├── spectrum.py            # diagnostic: live spectrum/waterfall at 434 MHz
     └── requirements.txt
 ```
 
