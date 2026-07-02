@@ -52,11 +52,17 @@ code.
 │       ├── usbmsc.cpp/.h   # USB mass storage (FatFS) + eject callback
 │       └── protocol.h      # shared packet/image constants (mirrored in rx/)
 └── rx/                # Python receiver (RTL-SDR -> out.png)
-    ├── run_rtl433.sh / .ps1   # rtl_433 with the documented -X flex spec
-    ├── reassemble.py          # JSON in -> de-whiten -> CRC -> paint out.png
+    ├── live_rx.py             # THE receiver: pure-Python FSK demod -> canvas
+    ├── fskdemod.py            # burst detect + demod + packet extract (numpy)
+    ├── rtlsdr_mini.py         # ctypes wrapper for librtlsdr (dongle access)
+    ├── reassemble.py          # packet -> tile canvas -> out.png
     ├── protocol.py            # constants mirrored from firmware protocol.h
     ├── dewhiten.py            # CC1101 PN9 sequence (self-tested vs TI DN509)
-    ├── spectrum.py            # diagnostic: live spectrum/waterfall at 434 MHz
+    ├── capture_iq.py          # diagnostic: record raw IQ to .cu8
+    ├── analyze_capture.py     # diagnostic: offline burst/packet analysis
+    ├── spectrum.py            # diagnostic: live spectrum/waterfall
+    ├── run_rtl433.sh / .ps1   # rtl_433 flex-decoder path (did NOT work on
+    │                          # this bench — kept for reference; see CLAUDE.md)
     └── requirements.txt
 ```
 
@@ -91,15 +97,20 @@ pio device monitor -b 115200       # serial console
    ```powershell
    cd rx
    pip install -r requirements.txt      # once
-   .\run_rtl433.ps1                     # Windows (rtl_433.exe on PATH)
-   ./run_rtl433.sh                      # Linux/macOS
+   python live_rx.py                    # add --show for a live window
    ```
 
    `out.png` starts as a gray canvas and fills in tile by tile as packets
    arrive; tiles that never make it stay gray. Reception accumulates across
    repeated transmissions of the same image, so ejecting again fills holes.
-   Bench tip: the RTL-SDR overloads at desk range — set a low gain
-   (`$env:GAIN=1`) or remove the SDR antenna.
+   Bench tips: keep gain fixed (~20 dB, the default — auto gain clips) and
+   note the receiver deliberately tunes 25 kHz below the carrier to keep the
+   FSK tones out of the dongle's DC spike.
+
+   (The original `run_rtl433.*` flex-decoder path never decoded on this
+   bench and is kept for reference only; `live_rx.py` demodulates in pure
+   Python instead. Diagnostics that got us there: `spectrum.py`,
+   `capture_iq.py`, `analyze_capture.py`.)
 
 ## Project status
 
@@ -110,14 +121,22 @@ Built incrementally, milestone by milestone (see the kickoff prompt in
 - [x] **Milestone 2** — USB mass storage + eject trigger
 - [x] **Milestone 3** — JPEG decode + downscale to 128x128 RGB565
 - [x] **Milestone 4** — Tiling, packet protocol, and transmission
-- [x] **Milestone 5** — RTL-SDR receiver (`rx/`) — pipeline verified against
-  synthetic captures; awaiting over-the-air validation
+- [x] **Milestone 5** — RTL-SDR receiver (`rx/`) — final form is a pure-Python
+  FSK demodulator (`live_rx.py`); verified CRC-clean against real over-the-air
+  captures. The rtl_433 flex path was exhausted and documented.
 
 This file gets updated as milestones complete — see the section below for
 the changelog.
 
 ## Changelog
 
+- **2026-07-02** — Receiver switched to a pure-Python demodulator
+  (`live_rx.py` + `fskdemod.py`): rtl_433's FSK detector never fired on this
+  bench even after fixing auto-gain clipping and the DC-spike tuning trap,
+  while offline analysis (`analyze_capture.py`) proved every transmitted
+  burst decodes CRC-clean (measured: carrier ~433.985 MHz, dev ±4.6 kHz,
+  4808 bps). Live replay of a real 20 s capture: 50/50 packets, tile
+  painted. Dongle access via ctypes (`rtlsdr_mini.py`).
 - **2026-07-02** — Milestone 5: RTL-SDR receiver. rtl_433 flex decoder spec
   (FSK_PCM, 208 us/bit, preamble+sync `aad391`) documented field-by-field in
   `rx/run_rtl433.sh`; PN9 de-whitening and CC1101 CRC-16 verification happen

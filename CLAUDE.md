@@ -158,6 +158,17 @@ hash/mtime after the host writes — but prefer the eject-signal approach first.
   quadrature-demod → clock recovery → correlate sync word → slice bytes → de-whiten →
   parse. This is significantly more work; only go here if the rtl_433 path is exhausted.
   Document why, if you switch.
+- **FALLBACK TAKEN (2026-07-02), user-approved.** rtl_433's FSK detector never fired on
+  this signal even after fixing the two front-end problems (auto-gain clipping; FSK tone
+  in the DC spike). Offline analysis of a real capture (`rx/analyze_capture.py`) proved
+  the on-air signal protocol-perfect — every burst decodes CRC-clean in pure Python — so
+  the blocker is rtl_433's demod front end, not our spec. The live receiver is
+  `rx/live_rx.py` + `rx/fskdemod.py` (envelope burst detect → FM discriminator →
+  hysteresis slicer → whole-burst clock refinement → sync search → PN9 → CRC), feeding
+  the same `Reassembler`. Dongle access via `rx/rtlsdr_mini.py` (ctypes on the rtl_433
+  `librtlsdr.dll`; pyrtlsdr cannot load vanilla librtlsdr builds). Verified against a
+  real 20 s capture: 50/50 packets CRC-valid, tile painted. The rtl_433 scripts remain
+  for reference but are NOT the working path on this bench.
 
 ## Repo layout
 ```

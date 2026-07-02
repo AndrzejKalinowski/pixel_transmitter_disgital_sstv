@@ -90,11 +90,13 @@ class Reassembler:
         if raw[:2] == P.SYNC_WORD:
             candidates.insert(0, raw[2:])
         for candidate in candidates:
-            if self._try_packet(dewhiten(candidate)):
+            if self.process_packet(dewhiten(candidate)):
                 return
         self.stats["unparsed"] += 1
 
-    def _try_packet(self, data: bytes) -> bool:
+    def process_packet(self, data: bytes) -> bool:
+        """Validate + dispatch one DE-WHITENED packet, starting at the
+        CC1101 length byte. Public: live_rx.py feeds packets in here."""
         if len(data) < 1:
             return False
         plen = data[0]
