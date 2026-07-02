@@ -1,0 +1,14 @@
+# Claude Code local settings (machine-specific permissions)
+.claude/settings.local.json
+
+# PlatformIO build output (firmware/ also has its own .gitignore)
+firmware/.pio/
+
+# Python (rx/, once it exists)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Receiver output
+rx/out.png
