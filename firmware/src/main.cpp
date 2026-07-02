@@ -1,20 +1,19 @@
 // Pico 2 "digital SSTV" image transmitter — see ../CLAUDE.md
 //
-// Milestone 3: JPEG decode + downscale.
+// Milestone 4: tiling + packet protocol + transmission.
 //   1. Pico exposes its FAT partition as a USB drive; user copies a .jpg on.
 //   2. User EJECTS the drive — that's the transmit trigger.
 //   3. Firmware takes filesystem ownership, finds the most recent
 //      .jpg/.jpeg, decodes it (baseline only) into a 128x128 RGB565
-//      framebuffer, and prints dimensions + a stable checksum.
-// (Tiling + packet TX is Milestone 4.)
-//
-// The radio is brought up at boot exactly as in Milestone 1 so every boot
-// re-verifies the SPI/CC1101 path; nothing is transmitted yet.
+//      framebuffer, releases the filesystem back to the host, then
+//      transmits the frame tile-by-tile per protocol.h (headers 5x, every
+//      tile packet TX_REPEAT x), printing per-tile progress.
 
 #include <Arduino.h>
 #include "radio.h"
 #include "usbmsc.h"
 #include "jpeg.h"
+#include "tiles.h"
 
 static void haltBlinking(const char* why) {
   Serial.print(F("FATAL: "));
@@ -32,7 +31,7 @@ void setup() {
   while (!Serial && (millis() - t0) < 3000) {}  // wait for USB CDC, but don't require it
 
   Serial.println();
-  Serial.println(F("=== Pico image TX — Milestone 3: JPEG decode + downscale ==="));
+  Serial.println(F("=== Pico image TX — Milestone 4: tiling + transmission ==="));
 
   if (!radioSetup()) {
     haltBlinking("radio setup failed (wiring per CLAUDE.md?)");
@@ -62,6 +61,7 @@ void loop() {
 
   size_t size = 0;
   String name = usbmscFindLatestJpeg(&size);
+  bool decoded = false;
   if (name.length() == 0) {
     Serial.println(F("no .jpg/.jpeg found on the drive"));
   } else {
@@ -70,13 +70,17 @@ void loop() {
     Serial.print(F(" ("));
     Serial.print((unsigned)size);
     Serial.println(F(" bytes)"));
-
-    bool ok = jpegDecodeToFramebuffer(usbmscFilesystem(), "/" + name);
-    if (ok) {
-      // Milestone 4 hook: tile + transmit the framebuffer here.
-    }
+    decoded = jpegDecodeToFramebuffer(usbmscFilesystem(), "/" + name);
   }
 
+  // Hand the drive back before the (minutes-long) transmission: the decoded
+  // framebuffer is self-contained, and the host can already stage the next
+  // image while this one is on the air.
   usbmscReleaseOwnership();
-  Serial.println(F("filesystem released — re-plug the drive to copy another file"));
+  Serial.println(F("filesystem released back to host"));
+
+  if (decoded) {
+    tilesTransmitFrame(jpegFramebuffer());
+    Serial.println(F("eject again (or copy a new image first) to re-transmit"));
+  }
 }

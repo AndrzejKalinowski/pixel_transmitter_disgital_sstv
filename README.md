@@ -39,6 +39,7 @@ code.
 │       ├── main.cpp     # setup/loop, eject trigger, orchestration
 │       ├── radio.cpp/.h    # CC1101 init + packet TX (RadioLib)
 │       ├── jpeg.cpp/.h     # TJpg_Decoder wrapper -> RGB565 framebuffer
+│       ├── tiles.cpp/.h    # tiling + packet building + repeat logic
 │       ├── usbmsc.cpp/.h   # USB mass storage (FatFS) + eject callback
 │       └── protocol.h      # shared packet/image constants (mirrored in rx/)
 └── rx/                # Python receiver (RTL-SDR -> out.png), added in Milestone 5
@@ -80,7 +81,7 @@ Built incrementally, milestone by milestone (see the kickoff prompt in
 - [x] **Milestone 1** — Radio smoke test (CC1101 bring-up, repeated TX over RadioLib)
 - [x] **Milestone 2** — USB mass storage + eject trigger
 - [x] **Milestone 3** — JPEG decode + downscale to 128x128 RGB565
-- [ ] **Milestone 4** — Tiling, packet protocol, and transmission
+- [x] **Milestone 4** — Tiling, packet protocol, and transmission
 - [ ] **Milestone 5** — RTL-SDR receiver (`rx/`)
 
 This file gets updated as milestones complete — see the section below for
@@ -88,6 +89,10 @@ the changelog.
 
 ## Changelog
 
+- **2026-07-02** — Milestone 4 done: full tiling + packet protocol per
+  `protocol.h` (52-byte payloads, 10 chunks/tile, frame header 5x, every
+  packet 3x), ~4 min per frame at 4.8 kbps. Filesystem is handed back to
+  the host before transmitting, so the next image can be staged during TX.
 - **2026-07-02** — Milestone 3 done: TJpg_Decoder integration, JPEG decode
   with graceful failure on progressive/corrupt files, nearest-neighbor
   resample to 128x128 RGB565, framebuffer checksum for verification.
