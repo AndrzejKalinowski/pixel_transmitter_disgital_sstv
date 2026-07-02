@@ -12,7 +12,7 @@
 # at +20.6/+29.8 kHz — clear of the RTL-SDR's DC spike, which otherwise
 # swallows the lower tone (tones must never sit near 0 Hz offset).
 $freq = if ($env:FREQ) { $env:FREQ } else { "433.960M" }
-$flex = 'n=pixeltx,m=FSK_PCM,s=104,l=104,r=2000,preamble=aad391,bits>=80'
+$flex = 'n=pixeltx,m=FSK_PCM,s=208,l=208,r=3000,preamble=aad391,bits>=80'
 # Fixed gain by default: rtl_433's auto gain drives this bench's front end
 # into clipping on idle noise alone (measured +1.5 dBFS idle at auto vs a
 # clean -45 dBFS floor at 20 dB). Override with $env:GAIN.

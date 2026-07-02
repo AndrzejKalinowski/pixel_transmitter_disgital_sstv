@@ -7,12 +7,11 @@
 #
 #   n=pixeltx        decoder name; reassemble.py filters JSON on this model
 #   m=FSK_PCM        2-FSK, NRZ bit coding (CC1101 packet mode, no Manchester)
-#   s=104 l=104      microseconds per bit: 9600 bps -> 104.17 us. short==long
+#   s=208 l=208      microseconds per bit: 4800 bps -> 208.33 us. short==long
 #                    tells rtl_433 the coding is NRZ rather than RZ.
-#                    (Firmware ran 4.8 kbps -> s=208 until 2026-07-03.)
-#   r=2000           row reset after 2 ms with no transitions. PN9-whitened
-#                    data never runs longer than ~9 identical bits (0.94 ms),
-#                    and the firmware pauses 5 ms between packets, so 2 ms
+#   r=3000           row reset after 3 ms with no transitions. PN9-whitened
+#                    data never runs longer than ~9 identical bits (1.9 ms),
+#                    and the firmware pauses 5 ms between packets, so 3 ms
 #                    cleanly ends a packet without splitting one.
 #   preamble=aad391  alignment pattern: last preamble byte (0xAA) + sync word
 #                    0xD3 0x91. rtl_433 strips everything through this, so
@@ -31,7 +30,7 @@
 # analyze_capture.py) so the FSK tones land at +20.6/+29.8 kHz, clear of the
 # RTL-SDR's DC spike — a tone near 0 Hz offset kills rtl_433's FSK detector.
 FREQ="${FREQ:-433.960M}"
-FLEX='n=pixeltx,m=FSK_PCM,s=104,l=104,r=2000,preamble=aad391,bits>=80'
+FLEX='n=pixeltx,m=FSK_PCM,s=208,l=208,r=3000,preamble=aad391,bits>=80'
 
 # Fixed gain by default: auto gain clips on idle noise on this bench
 # (+1.5 dBFS idle at auto vs -45 dBFS floor at 20 dB). Override with GAIN.

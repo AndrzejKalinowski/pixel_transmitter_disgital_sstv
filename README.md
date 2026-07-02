@@ -31,8 +31,8 @@ code.
    downscales it to 128x128 RGB565, and splits it into a 8x8 grid of 16x16
    tiles.
 3. Each tile is chunked into small radio packets and sent over CC1101 at
-   434.0 MHz / 9.6 kbps, repeated 3x for loss tolerance (no ACKs — this is a
-   one-way link).
+   434.0 MHz / 4.8 kbps; the whole frame is transmitted 3x end-to-end for
+   loss tolerance (no ACKs — this is a one-way link).
 4. **The receiver** (a PC + RTL-SDR) runs `rtl_433` with a custom flex
    decoder matched to this project's PHY, and a Python script reassembles
    the tiles into `out.png`, filling in gray where tiles were lost.
@@ -90,8 +90,9 @@ pio device monitor -b 115200       # serial console
    drive.
 2. Copy a baseline JPEG onto the drive.
 3. Eject the drive (right-click -> Eject, or your OS's safe-remove). This
-   triggers the transmission — progress prints over serial (~2 min per
-   frame). The drive re-mounts right away so you can stage the next image.
+   triggers the transmission — progress prints over serial (~4 min per
+   frame, in 3 whole-frame passes). The drive re-mounts right away so you
+   can stage the next image.
 4. On the PC, start the receiver **before ejecting**:
 
    ```powershell
@@ -130,6 +131,13 @@ the changelog.
 
 ## Changelog
 
+- **2026-07-03** — Blank-image robustness: the receiver now paints every
+  received chunk immediately (a lost packet costs a 26-pixel strip, not a
+  16x16 tile), and the firmware repeats at frame level (3 whole-frame
+  passes instead of 3 back-to-back copies) so correlated loss can't kill
+  all copies of a chunk. The 9.6 kbps trial from earlier today is reverted
+  (heavy packet loss) — back to the proven 4.8 kbps / ±5 kHz; PHY constants
+  stay centralized in `protocol.h`.
 - **2026-07-03** — Link speed doubled: 9.6 kbps / ±10 kHz deviation (PHY now
   lives in `protocol.h` as shared constants), inter-packet gap 10 -> 5 ms.
   A frame is now ~2 minutes. Receiver fix: the adaptive noise floor tracked

@@ -120,7 +120,7 @@ def main() -> None:
     margin = int(0.03 * fs)
 
     rx = Reassembler(args.out, args.show, args.verbose)
-    rx.save()
+    rx.save(force=True)
 
     if args.file:
         source = raw_from_file(args.file, chunk_bytes)
@@ -192,7 +192,7 @@ def main() -> None:
     finally:
         if record_fh:
             record_fh.close()
-        rx.save()
+        rx.save(force=True)
         rx.summary()
 
 

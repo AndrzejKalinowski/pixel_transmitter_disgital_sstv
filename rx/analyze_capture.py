@@ -46,8 +46,7 @@ def main() -> None:
     durs = [(e - s) / fs * 1e3 for s, e in bursts]
     print(f"burst durations: min {min(durs):.1f} / median "
           f"{sorted(durs)[len(durs) // 2]:.1f} / max {max(durs):.1f} ms "
-          f"(expect ~58 ms data / ~18 ms header at 9.6 kbps; "
-          f"double that for old 4.8 kbps captures)")
+          f"(expect ~117 ms data / ~37 ms header at 4.8 kbps)")
 
     crc_pass = crc_fail = 0
     for i, (s, e) in enumerate(bursts[: args.max_bursts]):

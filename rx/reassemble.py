@@ -14,8 +14,9 @@ Pipeline per received row:
      replaces the chip-side CRC filtering an actual CC1101 receiver would
      do — rtl_433 cannot check it because the bits it sees are whitened.
   4. Parse per protocol.py, dedupe by (tile_index, chunk_index), and paint
-     every fully-received tile onto the canvas. Missing tiles stay gray.
-     Tiles accumulate across repeated transmissions of the same frame.
+     every chunk onto the canvas as it arrives — a lost packet costs a
+     26-pixel strip, not a whole 16x16 tile. Whatever never arrives stays
+     gray. Chunks accumulate across repeated transmissions of the frame.
 
 out.png is rewritten every time a tile completes, so you can watch the
 image build up SSTV-style with any auto-reloading viewer (or --show for a
@@ -25,6 +26,7 @@ live OpenCV window if opencv-python is installed).
 import argparse
 import json
 import sys
+import time
 from collections import Counter
 
 import numpy as np
@@ -59,6 +61,7 @@ class Reassembler:
         self.tiles = {}       # tile_index -> {chunk_index: payload bytes}
         self.done = set()
         self.canvas = self._gray_canvas()
+        self._last_save = 0.0
 
         self.viewer = None
         if show:
@@ -158,31 +161,44 @@ class Reassembler:
             return
         chunks[chunk] = payload
         self.stats["chunks"] += 1
+        self._paint_chunk(tile, chunk, payload)
         if self.verbose:
             print(f"  tile {tile:2d} chunk {chunk}/{chunk_count} "
                   f"({len(chunks)}/{chunk_count} held)")
         if len(chunks) == chunk_count and tile not in self.done:
-            self._paint_tile(tile, chunks, chunk_count)
+            self.done.add(tile)
+            print(f"tile {tile:2d} complete -> {len(self.done)}/{self.total_tiles} tiles")
+            self.save(force=True)
 
-    def _paint_tile(self, tile: int, chunks: dict, chunk_count: int) -> None:
-        blob = b"".join(chunks[i] for i in range(chunk_count))
-        tile_bytes = self.tile_px * self.tile_px * 2
-        if len(blob) != tile_bytes:
-            self.stats["bad_tile_size"] += 1
+    def _paint_chunk(self, tile: int, chunk: int, payload: bytes) -> None:
+        """Chunks hit the canvas immediately — losing a packet costs a
+        26-pixel strip, not the whole tile. Byte offset within the tile is
+        chunk_index * PKT_PAYLOAD_MAX (protocol.py), pixels row-major."""
+        n_px = len(payload) // 2
+        if n_px == 0:
             return
-        rgb = rgb565_to_rgb888(blob).reshape(self.tile_px, self.tile_px, 3)
+        rgb = rgb565_to_rgb888(payload[: n_px * 2])
+        first_px = chunk * P.PKT_PAYLOAD_MAX // 2
+        idxs = np.arange(first_px, first_px + n_px)
+        idxs = idxs[idxs < self.tile_px * self.tile_px]
         tiles_x = self.w // self.tile_px
         x0 = (tile % tiles_x) * self.tile_px
         y0 = (tile // tiles_x) * self.tile_px
-        self.canvas[y0 : y0 + self.tile_px, x0 : x0 + self.tile_px] = rgb
-        self.done.add(tile)
-        print(f"tile {tile:2d} complete -> {len(self.done)}/{self.total_tiles} tiles")
+        ys = y0 + idxs // self.tile_px
+        xs = x0 + idxs % self.tile_px
+        self.canvas[ys, xs] = rgb[: len(idxs)]
         self.save()
         self._update_view()
 
     # ---- output ---------------------------------------------------------
 
-    def save(self) -> None:
+    def save(self, force: bool = False) -> None:
+        # Chunk-level painting means ~10 saves/s unthrottled; cap PNG
+        # writes at 2/s, with force for milestones (tile done, shutdown).
+        now = time.monotonic()
+        if not force and now - self._last_save < 0.5:
+            return
+        self._last_save = now
         Image.fromarray(self.canvas).save(self.out_path)
 
     def _update_view(self) -> None:
@@ -198,7 +214,7 @@ class Reassembler:
         print("\n--- RX summary ---")
         for key in ("rows", "crc_ok", "crc_ok_swapped", "crc_fail", "unparsed",
                     "truncated", "headers", "chunks", "dupes", "bad_magic",
-                    "bad_fields", "bad_tile_size"):
+                    "bad_fields"):
             if self.stats[key]:
                 print(f"  {key:16s} {self.stats[key]}")
         print(f"  tiles complete   {len(self.done)}/{self.total_tiles}")
@@ -235,7 +251,7 @@ def main() -> None:
     args = ap.parse_args()
 
     rx = Reassembler(args.out, args.show, args.verbose)
-    rx.save()  # gray canvas exists from second zero
+    rx.save(force=True)  # gray canvas exists from second zero
     stream = sys.stdin if args.input == "-" else open(args.input, encoding="utf-8")
     print(f"listening (model '{args.model}') — Ctrl-C to stop")
     try:
@@ -245,7 +261,7 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        rx.save()
+        rx.save(force=True)
         rx.summary()
 
 

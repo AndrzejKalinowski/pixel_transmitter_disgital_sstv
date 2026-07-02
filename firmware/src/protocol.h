@@ -3,10 +3,12 @@
 #include <stdint.h>
 
 // ==== PHY (radio.cpp configures the chip from this; rx mirrors it) ====
-// 9.6 kbps since 2026-07-03 (2x speedup on user request; deviation scaled
-// with it to keep the proven modulation index). Was 4.8 kbps / 5 kHz.
-static const uint32_t PHY_BITRATE_BPS = 9600;
-static const uint32_t PHY_DEVIATION_HZ = 10000;
+// 4.8 kbps / 5 kHz deviation — the field-proven operating point. A 9.6 kbps
+// trial (2026-07-03) was reverted the same day: packet loss left most tiles
+// incomplete. Revisit only after analyzing a --record capture taken at the
+// higher rate.
+static const uint32_t PHY_BITRATE_BPS = 4800;
+static const uint32_t PHY_DEVIATION_HZ = 5000;
 
 // ==== Transmit image geometry ====
 static const uint16_t TX_W = 128;
@@ -54,7 +56,11 @@ static const uint8_t  CHUNKS_PER_TILE = (TILE_BYTES + PKT_PAYLOAD_MAX - 1) / PKT
 static const uint8_t  FRAME_HEADER_BYTES = 9;
 
 // ==== Redundancy (one-way link, no ACKs) ====
-static const uint8_t  TX_REPEAT = 3;      // each tile packet sent this many times
-static const uint8_t  HEADER_REPEAT = 5;  // frame-header packet repeats
+// TX_REPEAT is applied at FRAME level: the whole frame is sent end-to-end
+// this many times (headers before each pass). Every packet still goes out
+// TX_REPEAT times total, but the copies are minutes apart, so bursty or
+// time-correlated loss can't kill all copies of a chunk at once.
+static const uint8_t  TX_REPEAT = 3;      // full-frame passes
+static const uint8_t  HEADER_REPEAT = 5;  // frame-header packets per pass
 static const uint16_t PKT_GAP_MS = 5;     // breather between packets for the SDR
                                           // (burst separation for the RX demod)

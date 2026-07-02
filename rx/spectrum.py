@@ -15,8 +15,8 @@ Usage:
     python spectrum.py --gain 1         # fixed low gain (bench overload)
     python spectrum.py --probe          # no GUI: open dongle, print levels
 
-What to look for while the Pico transmits (one burst every ~63 ms):
-  * Healthy: a narrow (~30 kHz wide) blip flickering near the center line.
+What to look for while the Pico transmits (one burst every ~122 ms):
+  * Healthy: a narrow (~20 kHz wide) blip flickering near the center line.
     The title's peak read-out tells you its exact offset — if it is more
     than ~20 kHz off, retune rtl_433 with e.g.  $env:FREQ="433.98M".
   * Nothing at all: RF-side problem — is the firmware actually printing

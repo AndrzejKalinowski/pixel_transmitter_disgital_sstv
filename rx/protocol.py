@@ -38,8 +38,8 @@ FRAME_HEADER_BYTES = 9
 
 # PHY (mirrors PHY_* in firmware protocol.h)
 SYNC_WORD = bytes([0xD3, 0x91])
-BIT_RATE_BPS = 9600     # was 4800 until 2026-07-03
-DEVIATION_HZ = 10000
+BIT_RATE_BPS = 4800     # 9.6k trial reverted 2026-07-03 (heavy packet loss)
+DEVIATION_HZ = 5000
 
 
 def crc16_cc1101(data: bytes) -> int:
