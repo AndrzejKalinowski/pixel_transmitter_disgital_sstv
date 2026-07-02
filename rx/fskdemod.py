@@ -25,16 +25,22 @@ def find_bursts(iq: np.ndarray, fs: float, floor=None):
 
     Returns (bursts, chunk_floor): bursts as (start, end) sample indexes —
     a burst still in progress at the buffer end is reported with
-    end == len(iq)-1 — and the 20th-percentile envelope of THIS data, so a
-    caller streaming continuously can maintain its own long-term floor
-    (during a dense packet train the in-chunk percentile sits on the signal,
-    not the noise).
+    end == len(iq)-1 — and this chunk's noise-floor estimate.
+
+    The floor is the 5th percentile of the envelope: the transmitter's
+    packet train is ~92% duty (117 ms bursts, 10 ms gaps), so a higher
+    percentile (or a mean) measures the SIGNAL and the threshold creeps up
+    until reception goes deaf — that exact failure was observed live.
+    The 10 ms gaps are ~8% of airtime, so the 5th percentile stays in the
+    gaps and reads true noise even mid-transmission.
     """
     env = np.convolve(np.abs(iq), np.ones(64) / 64, mode="same")
-    chunk_floor = float(np.percentile(env, 20))
+    chunk_floor = float(np.percentile(env, 5))
     if floor is None:
         floor = chunk_floor
-    active = env > max(floor * 4, floor + 0.05)
+    # Purely relative threshold (14 dB over the floor). An absolute term
+    # would silently reject weaker-but-clean signals.
+    active = env > floor * 5
     edges = np.diff(active.astype(np.int8))
     starts = list(np.where(edges == 1)[0])
     ends = list(np.where(edges == -1)[0])
