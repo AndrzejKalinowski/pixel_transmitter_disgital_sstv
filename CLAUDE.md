@@ -222,9 +222,14 @@ core version and adapt rather than trusting these flags blindly.
 - Default SPI0 pins (GP16/18/19) → no pin-remap calls.
 - RTL-SDR overloads at bench range: low gain, antenna off, center exactly on carrier,
   NFM not WFM (for any manual demod).
-- The carrier does NOT land on 434.000 MHz on this bench: measured ~433.980 MHz
-  (CC1101 crystal + dongle ppm, ~-46 ppm combined; found with rx/spectrum.py). The
-  rx scripts default to 433.980M — re-measure before chasing "no packets" ghosts.
+- The carrier does NOT land on 434.000 MHz on this bench: measured ~433.985 MHz,
+  dev ±4.6 kHz, 4808 bps (CC1101 crystal + dongle ppm; measured precisely with
+  rx/analyze_capture.py on a rx/capture_iq.py recording — those tools decode the
+  packets in pure Python, CRC-verified, so the TX side is proven good).
+- NEVER tune the RTL-SDR onto the carrier: a FSK tone near 0 Hz offset drowns in the
+  dongle's DC spike and rtl_433's FSK detector goes blind. The rx scripts default to
+  433.960M so the tones land at +20/+30 kHz. Also always use fixed gain (~20 dB):
+  auto gain clips on idle noise on this bench (+1.5 dBFS idle measured).
 - rtl_433 will NOT auto-know our packet format: the `-X` flex string is mandatory and
   must match bitrate + sync + length.
 - Whitening must be de-whitened on exactly one side; mismatch = garbage bytes.

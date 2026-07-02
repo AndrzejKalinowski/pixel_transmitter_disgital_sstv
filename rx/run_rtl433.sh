@@ -26,9 +26,10 @@
 # Bench tips (CLAUDE.md): the RTL-SDR overloads at desk range — use low gain
 # (GAIN env var, e.g. GAIN=1), or pull the SDR antenna entirely.
 
-# Nominal 434.000M; ~433.980M measured on this bench (crystal + dongle ppm
-# offsets — re-measure with spectrum.py if the hardware changes).
-FREQ="${FREQ:-433.980M}"
+# DELIBERATELY tuned 25 kHz below the real carrier (~433.985M measured with
+# analyze_capture.py) so the FSK tones land at +20.6/+29.8 kHz, clear of the
+# RTL-SDR's DC spike — a tone near 0 Hz offset kills rtl_433's FSK detector.
+FREQ="${FREQ:-433.960M}"
 FLEX='n=pixeltx,m=FSK_PCM,s=208,l=208,r=3000,preamble=aad391,bits>=80'
 
 # Fixed gain by default: auto gain clips on idle noise on this bench

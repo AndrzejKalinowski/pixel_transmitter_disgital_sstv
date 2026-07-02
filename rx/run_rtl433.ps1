@@ -6,10 +6,12 @@
 # Usage:  .\run_rtl433.ps1            (extra args go to reassemble.py,
 #         .\run_rtl433.ps1 --show      e.g. --show for a live window)
 
-# Nominal TX frequency is 434.000M, but on this bench the carrier lands at
-# ~433.980M (CC1101 crystal + dongle ppm error, measured with spectrum.py).
-# Override with $env:FREQ after re-measuring if the hardware changes.
-$freq = if ($env:FREQ) { $env:FREQ } else { "433.980M" }
+# DELIBERATELY tuned 25 kHz below the real carrier. Measured on this bench
+# (analyze_capture.py): carrier ~433.985M (nominal 434.000M minus crystal +
+# dongle ppm), deviation +/-4.6 kHz. Tuning at 433.960M puts the FSK tones
+# at +20.6/+29.8 kHz — clear of the RTL-SDR's DC spike, which otherwise
+# swallows the lower tone (tones must never sit near 0 Hz offset).
+$freq = if ($env:FREQ) { $env:FREQ } else { "433.960M" }
 $flex = 'n=pixeltx,m=FSK_PCM,s=208,l=208,r=3000,preamble=aad391,bits>=80'
 # Fixed gain by default: rtl_433's auto gain drives this bench's front end
 # into clipping on idle noise alone (measured +1.5 dBFS idle at auto vs a

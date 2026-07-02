@@ -10,5 +10,6 @@ __pycache__/
 .venv/
 venv/
 
-# Receiver output
+# Receiver output and IQ recordings
 rx/out.png
+rx/*.cu8
