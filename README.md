@@ -129,6 +129,22 @@ Built incrementally, milestone by milestone (see the kickoff prompt in
 This file gets updated as milestones complete — see the section below for
 the changelog.
 
+## Troubleshooting (bench-measured specifics)
+
+All learned the hard way — full war stories in [CLAUDE.md](CLAUDE.md):
+
+- **No packets?** The carrier actually sits at ~433.985 MHz (crystal + dongle
+  ppm offsets), and the receiver deliberately tunes to 433.960 MHz so the FSK
+  tones clear the RTL-SDR's DC spike. Re-measure with `python rx/spectrum.py`
+  if any hardware changes.
+- **Keep SDR gain fixed** (~20 dB, the default). Auto gain clips on idle
+  noise on this bench; at desk range consider pulling the SDR antenna.
+- **Diagnosing loss:** `python rx/live_rx.py --record session.cu8` saves the
+  raw RF while receiving; `python rx/analyze_capture.py session.cu8` then
+  measures and decodes every burst offline.
+- **Serial console** (115200 baud) prints the CC1101 register dump on boot,
+  JPEG decode details, and per-pass transmit progress.
+
 ## Changelog
 
 - **2026-07-03** — Demod hardening for residual holes: burst segments are

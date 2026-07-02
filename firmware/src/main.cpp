@@ -1,13 +1,13 @@
 // Pico 2 "digital SSTV" image transmitter — see ../CLAUDE.md
 //
-// Milestone 4: tiling + packet protocol + transmission.
+// Full TX chain:
 //   1. Pico exposes its FAT partition as a USB drive; user copies a .jpg on.
 //   2. User EJECTS the drive — that's the transmit trigger.
 //   3. Firmware takes filesystem ownership, finds the most recent
 //      .jpg/.jpeg, decodes it (baseline only) into a 128x128 RGB565
 //      framebuffer, releases the filesystem back to the host, then
-//      transmits the frame tile-by-tile per protocol.h (headers 5x, every
-//      tile packet TX_REPEAT x), printing per-tile progress.
+//      transmits the frame per protocol.h: TX_REPEAT whole-frame passes,
+//      each pass = headers + all tile chunks, with progress printed.
 
 #include <Arduino.h>
 #include "radio.h"
@@ -31,7 +31,7 @@ void setup() {
   while (!Serial && (millis() - t0) < 3000) {}  // wait for USB CDC, but don't require it
 
   Serial.println();
-  Serial.println(F("=== Pico image TX — Milestone 5: full TX chain ==="));
+  Serial.println(F("=== Pico 2 digital-SSTV pixel transmitter ==="));
   Serial.print(F("build " __DATE__ " " __TIME__ ", free heap "));
   Serial.print(rp2040.getFreeHeap());
   Serial.println(F(" bytes"));
