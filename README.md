@@ -31,7 +31,7 @@ code.
    downscales it to 128x128 RGB565, and splits it into a 8x8 grid of 16x16
    tiles.
 3. Each tile is chunked into small radio packets and sent over CC1101 at
-   434.0 MHz / 4.8 kbps, repeated 3x for loss tolerance (no ACKs — this is a
+   434.0 MHz / 9.6 kbps, repeated 3x for loss tolerance (no ACKs — this is a
    one-way link).
 4. **The receiver** (a PC + RTL-SDR) runs `rtl_433` with a custom flex
    decoder matched to this project's PHY, and a Python script reassembles
@@ -90,7 +90,7 @@ pio device monitor -b 115200       # serial console
    drive.
 2. Copy a baseline JPEG onto the drive.
 3. Eject the drive (right-click -> Eject, or your OS's safe-remove). This
-   triggers the transmission — progress prints over serial (~4 min per
+   triggers the transmission — progress prints over serial (~2 min per
    frame). The drive re-mounts right away so you can stage the next image.
 4. On the PC, start the receiver **before ejecting**:
 
@@ -130,6 +130,12 @@ the changelog.
 
 ## Changelog
 
+- **2026-07-03** — Link speed doubled: 9.6 kbps / ±10 kHz deviation (PHY now
+  lives in `protocol.h` as shared constants), inter-packet gap 10 -> 5 ms.
+  A frame is now ~2 minutes. Receiver fix: the adaptive noise floor tracked
+  a too-high percentile and went deaf mid-transmission; now reads gap noise
+  (5th percentile). live_rx gained --waterfall, --record and a
+  floor/envmax/buffer health readout.
 - **2026-07-02** — Receiver switched to a pure-Python demodulator
   (`live_rx.py` + `fskdemod.py`): rtl_433's FSK detector never fired on this
   bench even after fixing auto-gain clipping and the DC-spike tuning trap,

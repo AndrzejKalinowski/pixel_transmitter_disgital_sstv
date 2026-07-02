@@ -36,9 +36,10 @@ TILE_BYTES = TILE_PIXELS * TILE_PIXELS * 2
 CHUNKS_PER_TILE = (TILE_BYTES + PKT_PAYLOAD_MAX - 1) // PKT_PAYLOAD_MAX
 FRAME_HEADER_BYTES = 9
 
-# PHY (documented for reference; enforced by rtl_433's -X string)
+# PHY (mirrors PHY_* in firmware protocol.h)
 SYNC_WORD = bytes([0xD3, 0x91])
-BIT_RATE_BPS = 4800
+BIT_RATE_BPS = 9600     # was 4800 until 2026-07-03
+DEVIATION_HZ = 10000
 
 
 def crc16_cc1101(data: bytes) -> int:

@@ -110,8 +110,10 @@ hash/mtime after the host writes — but prefer the eject-signal approach first.
 
 ### CC1101 radio config (RadioLib, packet mode)
 - Frequency: **434.0 MHz**
-- Bit rate: **4.8 kbps** (slow + reliable; user confirmed slow is fine)
-- 2-FSK, frequency deviation ~5 kHz, RX bandwidth default
+- Bit rate: **9.6 kbps** (raised from 4.8 on user request 2026-07-03, deviation scaled
+  to keep the modulation index; both live in `protocol.h` as `PHY_*` constants —
+  change them there, nowhere else)
+- 2-FSK, frequency deviation ~10 kHz, RX bandwidth default
 - Sync word: pick a distinctive 2-byte sync (e.g. 0xD3 0x91) and DOCUMENT it — the
   RX flex-decoder needs to match it exactly.
 - Data whitening: **ON** (note: the RX must de-whiten identically — document the
@@ -236,7 +238,9 @@ core version and adapt rather than trusting these flags blindly.
 - The carrier does NOT land on 434.000 MHz on this bench: measured ~433.985 MHz,
   dev ±4.6 kHz, 4808 bps (CC1101 crystal + dongle ppm; measured precisely with
   rx/analyze_capture.py on a rx/capture_iq.py recording — those tools decode the
-  packets in pure Python, CRC-verified, so the TX side is proven good).
+  packets in pure Python, CRC-verified, so the TX side is proven good). Those
+  numbers were taken at the original 4.8 kbps config; since 2026-07-03 the link
+  runs 9.6 kbps / ±10 kHz, same carrier offset.
 - NEVER tune the RTL-SDR onto the carrier: a FSK tone near 0 Hz offset drowns in the
   dongle's DC spike and rtl_433's FSK detector goes blind. The rx scripts default to
   433.960M so the tones land at +20/+30 kHz. Also always use fixed gain (~20 dB):

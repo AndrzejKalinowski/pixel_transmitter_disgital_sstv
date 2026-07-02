@@ -2,6 +2,12 @@
 #pragma once
 #include <stdint.h>
 
+// ==== PHY (radio.cpp configures the chip from this; rx mirrors it) ====
+// 9.6 kbps since 2026-07-03 (2x speedup on user request; deviation scaled
+// with it to keep the proven modulation index). Was 4.8 kbps / 5 kHz.
+static const uint32_t PHY_BITRATE_BPS = 9600;
+static const uint32_t PHY_DEVIATION_HZ = 10000;
+
 // ==== Transmit image geometry ====
 static const uint16_t TX_W = 128;
 static const uint16_t TX_H = 128;
@@ -50,4 +56,5 @@ static const uint8_t  FRAME_HEADER_BYTES = 9;
 // ==== Redundancy (one-way link, no ACKs) ====
 static const uint8_t  TX_REPEAT = 3;      // each tile packet sent this many times
 static const uint8_t  HEADER_REPEAT = 5;  // frame-header packet repeats
-static const uint16_t PKT_GAP_MS = 10;    // breather between packets for the SDR
+static const uint16_t PKT_GAP_MS = 5;     // breather between packets for the SDR
+                                          // (burst separation for the RX demod)

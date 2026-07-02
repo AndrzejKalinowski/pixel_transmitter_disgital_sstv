@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <RadioLib.h>
+#include "protocol.h"
 #include "radio.h"
 
 // Verified wiring (CLAUDE.md): default SPI0 — SCK=GP18, MOSI=GP19, MISO=GP16 —
@@ -35,8 +36,13 @@ bool radioSetup() {
   // RADIOLIB_ERR_CHIP_NOT_FOUND (-2) bug on this hardware.
   SPI.begin();
 
-  Serial.print(F("radio.begin(434.0 MHz, 4.8 kbps, dev 5.0 kHz, rxBW 135 kHz, 0 dBm, 64-bit preamble) ... "));
-  int16_t state = radio.begin(434.0, 4.8, 5.0, 135.0, 0, 64);
+  Serial.print(F("radio.begin(434.0 MHz, "));
+  Serial.print(PHY_BITRATE_BPS / 1000.0f, 1);
+  Serial.print(F(" kbps, dev "));
+  Serial.print(PHY_DEVIATION_HZ / 1000.0f, 1);
+  Serial.print(F(" kHz, rxBW 135 kHz, 0 dBm, 64-bit preamble) ... "));
+  int16_t state = radio.begin(434.0, PHY_BITRATE_BPS / 1000.0f,
+                              PHY_DEVIATION_HZ / 1000.0f, 135.0, 0, 64);
   if (state != RADIOLIB_ERR_NONE) {
     Serial.print(F("FAILED, code "));
     Serial.println(state);

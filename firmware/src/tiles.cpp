@@ -9,7 +9,7 @@ static const uint8_t AIR_OVERHEAD_BYTES = 13;
 static const uint8_t PKT_HEADER_BYTES = 5;
 
 static uint32_t packetAirMs(uint8_t appBytes) {
-  return ((uint32_t)(AIR_OVERHEAD_BYTES + appBytes) * 8 * 1000) / 4800;
+  return ((uint32_t)(AIR_OVERHEAD_BYTES + appBytes) * 8 * 1000) / PHY_BITRATE_BPS;
 }
 
 void tilesTransmitFrame(const uint16_t* framebuffer) {

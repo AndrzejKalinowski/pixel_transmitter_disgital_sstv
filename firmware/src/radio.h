@@ -3,9 +3,9 @@
 #include <stddef.h>
 
 // Bring up SPI + CC1101 in packet mode and print boot diagnostics
-// (VERSION, MARCSTATE). PHY: 434.0 MHz, 4.8 kbps 2-FSK, 5 kHz deviation,
-// 8-byte preamble, sync 0xD3 0x91, CRC on, PN9 whitening on, 0 dBm.
-// The RTL-SDR flex decoder (Milestone 5) must match these exactly.
+// (VERSION, MARCSTATE). PHY: 434.0 MHz 2-FSK, bit rate and deviation from
+// protocol.h (PHY_BITRATE_BPS / PHY_DEVIATION_HZ), 8-byte preamble, sync
+// 0xD3 0x91, CRC on, PN9 whitening on, 0 dBm. The RX side mirrors these.
 // Returns false after printing details if the radio doesn't come up.
 bool radioSetup();
 
