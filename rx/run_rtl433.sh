@@ -26,7 +26,9 @@
 # Bench tips (CLAUDE.md): the RTL-SDR overloads at desk range — use low gain
 # (GAIN env var, e.g. GAIN=1), or pull the SDR antenna entirely.
 
-FREQ="${FREQ:-434.000M}"
+# Nominal 434.000M; ~433.980M measured on this bench (crystal + dongle ppm
+# offsets — re-measure with spectrum.py if the hardware changes).
+FREQ="${FREQ:-433.980M}"
 FLEX='n=pixeltx,m=FSK_PCM,s=208,l=208,r=3000,preamble=aad391,bits>=80'
 
 rtl_433 -f "$FREQ" -s 250k ${GAIN:+-g "$GAIN"} \

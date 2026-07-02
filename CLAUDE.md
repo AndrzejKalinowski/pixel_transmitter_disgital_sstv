@@ -222,6 +222,9 @@ core version and adapt rather than trusting these flags blindly.
 - Default SPI0 pins (GP16/18/19) → no pin-remap calls.
 - RTL-SDR overloads at bench range: low gain, antenna off, center exactly on carrier,
   NFM not WFM (for any manual demod).
+- The carrier does NOT land on 434.000 MHz on this bench: measured ~433.980 MHz
+  (CC1101 crystal + dongle ppm, ~-46 ppm combined; found with rx/spectrum.py). The
+  rx scripts default to 433.980M — re-measure before chasing "no packets" ghosts.
 - rtl_433 will NOT auto-know our packet format: the `-X` flex string is mandatory and
   must match bitrate + sync + length.
 - Whitening must be de-whitened on exactly one side; mismatch = garbage bytes.
