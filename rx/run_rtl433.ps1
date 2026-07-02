@@ -24,4 +24,4 @@ if ($rtlCmd) {
 }
 
 & $rtl -f $freq -s 250k @gainArgs -X $flex -F json |
-    python "$PSScriptRoot\reassemble.py" @args
+    python "$PSScriptRoot\reassemble.py" --out "$PSScriptRoot\out.png" @args

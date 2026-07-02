@@ -31,4 +31,4 @@ FLEX='n=pixeltx,m=FSK_PCM,s=208,l=208,r=3000,preamble=aad391,bits>=80'
 
 rtl_433 -f "$FREQ" -s 250k ${GAIN:+-g "$GAIN"} \
         -X "$FLEX" -F json \
-    | python3 "$(dirname "$0")/reassemble.py" "$@"
+    | python3 "$(dirname "$0")/reassemble.py" --out "$(dirname "$0")/out.png" "$@"
