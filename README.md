@@ -131,6 +131,13 @@ the changelog.
 
 ## Changelog
 
+- **2026-07-03** — Demod hardening for residual holes: burst segments are
+  trimmed to true signal extent before slicing (noise margins were skewing
+  the symbol clock — killed short header packets), FSK tones estimated from
+  the burst core, and the sync word is now found by correlation tolerating
+  1 bit error with CRC arbitration (like the CC1101's own 15/16 mode)
+  instead of requiring a verbatim preamble+sync match. Replay of the real
+  capture: 50/50 packets CRC-valid, zero losses.
 - **2026-07-03** — Blank-image robustness: the receiver now paints every
   received chunk immediately (a lost packet costs a 26-pixel strip, not a
   16x16 tile), and the firmware repeats at frame level (3 whole-frame

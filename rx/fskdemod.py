@@ -16,8 +16,8 @@ import numpy as np
 import protocol as P
 from dewhiten import dewhiten
 
-PREAMBLE_BITS = "10101010" * 3
 SYNC_BITS = format(P.SYNC_WORD[0], "08b") + format(P.SYNC_WORD[1], "08b")
+_SYNC_ARR = np.array([int(b) for b in SYNC_BITS], dtype=np.uint8)
 
 
 def find_bursts(iq: np.ndarray, fs: float, floor=None):
@@ -62,13 +62,30 @@ def demod_burst(iq: np.ndarray, fs: float):
     """Demodulate one burst. Returns a dict with the measured PHY numbers,
     the sliced bitstream, and any CRC-checkable packets found — or None if
     the burst is too short/noisy to slice."""
+    # Trim to the actual signal extent first. The segmentation threshold is
+    # deliberately generous, so segments carry noise margins — and the
+    # hysteresis slicer chattering in those margins drags the symbol-clock
+    # refinement off frequency (short header packets died of exactly this).
+    env = np.convolve(np.abs(iq), np.ones(32) / 32, mode="same")
+    ref = np.median(env[len(env) // 4 : 3 * len(env) // 4])
+    on = np.where(env > 0.5 * ref)[0]
+    if len(on) < 200:
+        return None
+    iq = iq[on[0] : on[-1] + 1]
+
     phase = np.angle(iq[1:] * np.conj(iq[:-1]))
     finst = phase * fs / (2 * np.pi)
     finst = np.convolve(finst, np.ones(9) / 9, mode="same")
 
-    split = np.median(finst)
-    f_lo = float(np.mean(finst[finst < split]))
-    f_hi = float(np.mean(finst[finst >= split]))
+    # Estimate the two FSK tones from the central 60% of the burst: the
+    # segmentation includes noise margins at both ends, and letting those
+    # into the tone means biases the slicing threshold on marginal bursts.
+    core = finst[len(finst) // 5 : len(finst) - len(finst) // 5]
+    if len(core) < 64:
+        return None
+    split = np.median(core)
+    f_lo = float(np.mean(core[core < split]))
+    f_hi = float(np.mean(core[core >= split]))
     center = (f_lo + f_hi) / 2
     dev = (f_hi - f_lo) / 2
 
@@ -109,53 +126,79 @@ def demod_burst(iq: np.ndarray, fs: float):
 
     # Run-length decode: no cumulative drift, each run quantized on its own;
     # PN9 whitening caps legitimate runs at ~9 bits.
-    bits = []
-    for run, val in zip(runs, values):
-        bits.extend([int(val)] * int(max(np.round(run / spb), 1)))
-    bitstr = "".join(map(str, bits))
+    bits = np.concatenate([
+        np.full(int(max(np.round(run / spb), 1)), val, dtype=np.uint8)
+        for run, val in zip(runs, values)
+    ])
 
     sync_note = {}
-    packets = extract_packets(bitstr, sync_note)
+    packets = extract_packets(bits, sync_note)
     return {
         "center_hz": center,
         "dev_hz": dev,
         "bitrate": fs / spb,
-        "n_bits": len(bitstr),
+        "n_bits": len(bits),
         "sync": sync_note.get("sync"),
         "packets": packets,
     }
 
 
-def extract_packets(bitstr: str, sync_note: dict):
-    """Search the bitstream for preamble+sync (both polarities), de-whiten,
-    and CRC-check. Returns a list of packets; each has 'data' = de-whitened
-    bytes from the length byte through the CRC, ready for a Reassembler."""
-    packets = []
-    for polarity, bs in (("normal", bitstr),
-                         ("inverted", bitstr.translate(str.maketrans("01", "10")))):
-        if PREAMBLE_BITS not in bs:
+def _try_at(bits: np.ndarray, start: int):
+    """Attempt a packet parse with the payload starting at bit `start`.
+    Returns a packet dict (crc_ok True/False) or None if too short/absurd."""
+    avail = (len(bits) - start) // 8
+    if avail < 4:  # length byte + minimal body + CRC can't fit
+        return None
+    raw = np.packbits(bits[start:start + avail * 8]).tobytes()
+    data = dewhiten(raw)
+    plen = data[0]
+    if not (1 <= plen <= 60) or len(data) < 1 + plen + 2:
+        return None
+    data = data[:1 + plen + 2]
+    body = data[1:1 + plen]
+    crc_rx = (data[1 + plen] << 8) | data[2 + plen]
+    return {
+        "data": data,
+        "len": plen,
+        "crc_ok": P.crc16_cc1101(data[:1 + plen]) == crc_rx,
+        "magic_ok": bool(plen) and body[0] == P.PKT_MAGIC,
+        "body": body.hex(),
+    }
+
+
+def extract_packets(bits: np.ndarray, sync_note: dict):
+    """Find the packet in a sliced bitstream and CRC-check it.
+
+    Instead of requiring a verbatim preamble+sync match (where one sliced
+    bit error kills an otherwise-perfect packet), correlate the 16-bit sync
+    word across the whole stream tolerating <=1 bit error — the same
+    leniency a real CC1101 uses in 15/16-match sync mode. Every candidate
+    alignment is arbitrated by the CRC (a false anchor passing CRC-16 is a
+    ~2e-5 event), exact matches tried first. Both FSK polarities are tried.
+
+    Returns at most one packet; if no candidate passes CRC, the best
+    candidate is returned with crc_ok=False so callers can count the loss.
+    """
+    best_fail = None
+    for polarity in ("normal", "inverted"):
+        bb = bits if polarity == "normal" else (1 - bits).astype(np.uint8)
+        if len(bb) < len(_SYNC_ARR) + 32:
             continue
-        idx = bs.find(SYNC_BITS, bs.find(PREAMBLE_BITS))
-        if idx < 0:
-            sync_note.setdefault("sync", f"preamble only ({polarity})")
+        windows = np.lib.stride_tricks.sliding_window_view(bb, len(_SYNC_ARR))
+        mismatches = (windows != _SYNC_ARR).sum(axis=1)
+        cand = np.where(mismatches <= 1)[0]
+        if len(cand) == 0:
             continue
-        sync_note["sync"] = f"found ({polarity} polarity)"
-        payload_bits = bs[idx + len(SYNC_BITS):]
-        nbytes = len(payload_bits) // 8
-        raw = bytes(int(payload_bits[i * 8:(i + 1) * 8], 2) for i in range(nbytes))
-        data = dewhiten(raw)
-        if len(data) >= 1:
-            plen = data[0]
-            if 1 <= plen <= 60 and len(data) >= 1 + plen + 2:
-                data = data[:1 + plen + 2]
-                body = data[1:1 + plen]
-                crc_rx = (data[1 + plen] << 8) | data[2 + plen]
-                packets.append({
-                    "data": data,
-                    "len": plen,
-                    "crc_ok": P.crc16_cc1101(data[:1 + plen]) == crc_rx,
-                    "magic_ok": bool(plen) and body[0] == P.PKT_MAGIC,
-                    "body": body.hex(),
-                })
-        break
-    return packets
+        cand = cand[np.argsort(mismatches[cand], kind="stable")][:8]
+        for idx in cand:
+            pkt = _try_at(bb, int(idx) + len(_SYNC_ARR))
+            if pkt is None:
+                continue
+            if pkt["crc_ok"]:
+                sync_note["sync"] = (f"found ({polarity}, "
+                                     f"{int(mismatches[idx])} sync-bit err)")
+                return [pkt]
+            if best_fail is None:
+                best_fail = pkt
+                sync_note.setdefault("sync", f"candidate only ({polarity})")
+    return [best_fail] if best_fail else []
