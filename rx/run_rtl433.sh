@@ -31,6 +31,10 @@
 FREQ="${FREQ:-433.980M}"
 FLEX='n=pixeltx,m=FSK_PCM,s=208,l=208,r=3000,preamble=aad391,bits>=80'
 
-rtl_433 -f "$FREQ" -s 250k ${GAIN:+-g "$GAIN"} \
+# Fixed gain by default: auto gain clips on idle noise on this bench
+# (+1.5 dBFS idle at auto vs -45 dBFS floor at 20 dB). Override with GAIN.
+GAIN="${GAIN:-20}"
+
+rtl_433 -f "$FREQ" -s 250k -g "$GAIN" \
         -X "$FLEX" -F json \
     | python3 "$(dirname "$0")/reassemble.py" --out "$(dirname "$0")/out.png" "$@"

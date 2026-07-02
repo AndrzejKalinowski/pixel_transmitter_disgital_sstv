@@ -11,8 +11,11 @@
 # Override with $env:FREQ after re-measuring if the hardware changes.
 $freq = if ($env:FREQ) { $env:FREQ } else { "433.980M" }
 $flex = 'n=pixeltx,m=FSK_PCM,s=208,l=208,r=3000,preamble=aad391,bits>=80'
-$gainArgs = @()
-if ($env:GAIN) { $gainArgs = @("-g", $env:GAIN) }
+# Fixed gain by default: rtl_433's auto gain drives this bench's front end
+# into clipping on idle noise alone (measured +1.5 dBFS idle at auto vs a
+# clean -45 dBFS floor at 20 dB). Override with $env:GAIN.
+$gain = if ($env:GAIN) { $env:GAIN } else { "20" }
+$gainArgs = @("-g", $gain)
 
 # Find rtl_433: PATH first, then the default install location (a terminal
 # opened before the installer updated the user PATH won't see it there yet).
