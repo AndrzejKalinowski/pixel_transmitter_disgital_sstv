@@ -71,7 +71,33 @@ bool radioSetup() {
   }
 
   Serial.println(F("sync word 0xD3 0x91, CRC on, PN9 whitening on"));
+  radioDumpRegisters();
   return true;
+}
+
+void radioDumpRegisters() {
+  Serial.println(F("CC1101 config registers:"));
+  for (uint8_t base = 0x00; base <= 0x2E; base += 8) {
+    Serial.print(F("  0x"));
+    if (base < 0x10) Serial.print('0');
+    Serial.print(base, HEX);
+    Serial.print(F(":"));
+    for (uint8_t i = 0; i < 8 && base + i <= 0x2E; i++) {
+      uint8_t v = cc1101ReadStatusReg(base + i);
+      Serial.print(v < 0x10 ? F(" 0") : F(" "));
+      Serial.print(v, HEX);
+    }
+    Serial.println();
+  }
+  uint8_t pktctrl0 = cc1101ReadStatusReg(0x08);
+  Serial.print(F("  PKTCTRL0=0x"));
+  Serial.print(pktctrl0, HEX);
+  Serial.print(F(" -> whitening "));
+  Serial.print((pktctrl0 & 0x40) ? F("ON") : F("OFF"));
+  Serial.print(F(", CRC "));
+  Serial.print((pktctrl0 & 0x04) ? F("ON") : F("OFF"));
+  Serial.print(F(", length mode "));
+  Serial.println(pktctrl0 & 0x03);  // 1 = variable (length byte first)
 }
 
 int16_t txPacket(const uint8_t* data, size_t len) {

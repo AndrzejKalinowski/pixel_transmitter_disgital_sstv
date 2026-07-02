@@ -238,3 +238,8 @@ core version and adapt rather than trusting these flags blindly.
 - Do NOT add `-DUSE_TINYUSB`: FatFSUSB `#error`s under Adafruit TinyUSB — it uses the
   core's native USB stack and registers MSC alongside CDC serial, so the same COM port
   keeps working while the drive is mounted.
+- De-whitening happens in PYTHON, not rtl_433: the flex decoder delivers rows still
+  PN9-whitened (and therefore cannot check the CC1101 CRC either). `rx/reassemble.py`
+  de-whitens (LFSR x^9+x^5+1, seed 0x1FF, per TI DN509) and then verifies CRC-16
+  (poly 0x8005, init 0xFFFF, over length byte + body, per TI DN502) itself. The flex
+  rows start at the CC1101 length byte because `preamble=aad391` consumes the sync.

@@ -31,7 +31,10 @@ void setup() {
   while (!Serial && (millis() - t0) < 3000) {}  // wait for USB CDC, but don't require it
 
   Serial.println();
-  Serial.println(F("=== Pico image TX — Milestone 4: tiling + transmission ==="));
+  Serial.println(F("=== Pico image TX — Milestone 5: full TX chain ==="));
+  Serial.print(F("build " __DATE__ " " __TIME__ ", free heap "));
+  Serial.print(rp2040.getFreeHeap());
+  Serial.println(F(" bytes"));
 
   if (!radioSetup()) {
     haltBlinking("radio setup failed (wiring per CLAUDE.md?)");
@@ -54,7 +57,9 @@ void loop() {
     return;
   }
 
-  Serial.println(F("EJECT detected — taking filesystem ownership"));
+  Serial.print(F("["));
+  Serial.print(millis());
+  Serial.println(F(" ms] EJECT detected — taking filesystem ownership"));
   if (!usbmscTakeOwnership()) {
     return;
   }

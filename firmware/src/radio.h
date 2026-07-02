@@ -9,6 +9,10 @@
 // Returns false after printing details if the radio doesn't come up.
 bool radioSetup();
 
+// Hex-dump all CC1101 config registers (0x00-0x2E) plus an interpretation
+// of PKTCTRL0 — lets the RX side verify the exact on-air PHY config.
+void radioDumpRegisters();
+
 // Transmit one packet and wait for completion by polling MARCSTATE.
 // NEVER use blocking radio.transmit() on this hardware — the GDO0/GDO2
 // jumpers are swapped, so RadioLib 7.7.1 waits on the wrong pin and always

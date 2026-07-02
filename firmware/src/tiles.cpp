@@ -39,6 +39,7 @@ void tilesTransmitFrame(const uint16_t* framebuffer) {
 
   uint32_t t0 = millis();
   uint32_t fails = 0;
+  uint32_t packetsSent = 0;
 
   // Frame header first, so a receiver that missed nothing can size its
   // canvas before the first tile arrives.
@@ -56,6 +57,7 @@ void tilesTransmitFrame(const uint16_t* framebuffer) {
     if (txPacket(pkt, FRAME_HEADER_BYTES) != 0) {  // 0 = RADIOLIB_ERR_NONE
       fails++;
     }
+    packetsSent++;
     delay(PKT_GAP_MS);
   }
   Serial.println(F("frame header sent"));
@@ -97,17 +99,19 @@ void tilesTransmitFrame(const uint16_t* framebuffer) {
           Serial.print(chunk);
           Serial.println(F(")"));
         }
+        packetsSent++;
         delay(PKT_GAP_MS);
       }
     }
 
-    Serial.print(F("tile "));
-    Serial.print(tile + 1);
-    Serial.print(F("/"));
-    Serial.print(TOTAL_TILES);
-    Serial.print(F(" sent ("));
-    Serial.print((millis() - t0) / 1000);
-    Serial.println(F(" s)"));
+    const uint32_t elapsed = millis() - t0;
+    const uint32_t etaS =
+        (uint32_t)(((uint64_t)elapsed * (totalPackets - packetsSent)) / packetsSent / 1000);
+    Serial.printf("tile %2u/%u sent | %4lu/%lu pkts | %3lu s elapsed | ~%3lu s left | %lu fails\r\n",
+                  tile + 1, TOTAL_TILES,
+                  (unsigned long)packetsSent, (unsigned long)totalPackets,
+                  (unsigned long)(elapsed / 1000), (unsigned long)etaS,
+                  (unsigned long)fails);
   }
 
   Serial.print(F("frame complete: "));

@@ -1,5 +1,14 @@
 # Pico 2 Digital SSTV Image Transmitter
 
+> [!WARNING]
+> **This project is entirely vibe-coded.** All of it — firmware, receiver,
+> protocol, this README — was written by an AI coding agent, with a human
+> only flashing builds and reporting what the hardware did. It is a hobby
+> experiment. **Do not use it. At all.** Not in production, not in anything
+> safety- or reliability-relevant, not as a reference for how to do any of
+> this properly. It transmits on 433 MHz — make sure you are allowed to do
+> that where you live before powering it on.
+
 A one-way image link that works like a *digital* SSTV. Drop a JPEG onto a
 Raspberry Pi Pico 2 (it shows up as a USB flash drive), eject the drive, and
 the Pico decodes the JPEG, downscales it, and transmits it **tile by tile**
@@ -42,7 +51,12 @@ code.
 │       ├── tiles.cpp/.h    # tiling + packet building + repeat logic
 │       ├── usbmsc.cpp/.h   # USB mass storage (FatFS) + eject callback
 │       └── protocol.h      # shared packet/image constants (mirrored in rx/)
-└── rx/                # Python receiver (RTL-SDR -> out.png), added in Milestone 5
+└── rx/                # Python receiver (RTL-SDR -> out.png)
+    ├── run_rtl433.sh / .ps1   # rtl_433 with the documented -X flex spec
+    ├── reassemble.py          # JSON in -> de-whiten -> CRC -> paint out.png
+    ├── protocol.py            # constants mirrored from firmware protocol.h
+    ├── dewhiten.py            # CC1101 PN9 sequence (self-tested vs TI DN509)
+    └── requirements.txt
 ```
 
 ## Hardware
@@ -69,9 +83,22 @@ pio device monitor -b 115200       # serial console
    drive.
 2. Copy a baseline JPEG onto the drive.
 3. Eject the drive (right-click -> Eject, or your OS's safe-remove). This
-   triggers the transmission — progress prints over serial.
-4. On the PC, run the RTL-SDR receiver (see `rx/`, once Milestone 5 lands)
-   to watch the image build up in `out.png`.
+   triggers the transmission — progress prints over serial (~4 min per
+   frame). The drive re-mounts right away so you can stage the next image.
+4. On the PC, start the receiver **before ejecting**:
+
+   ```powershell
+   cd rx
+   pip install -r requirements.txt      # once
+   .\run_rtl433.ps1                     # Windows (rtl_433.exe on PATH)
+   ./run_rtl433.sh                      # Linux/macOS
+   ```
+
+   `out.png` starts as a gray canvas and fills in tile by tile as packets
+   arrive; tiles that never make it stay gray. Reception accumulates across
+   repeated transmissions of the same image, so ejecting again fills holes.
+   Bench tip: the RTL-SDR overloads at desk range — set a low gain
+   (`$env:GAIN=1`) or remove the SDR antenna.
 
 ## Project status
 
@@ -82,13 +109,22 @@ Built incrementally, milestone by milestone (see the kickoff prompt in
 - [x] **Milestone 2** — USB mass storage + eject trigger
 - [x] **Milestone 3** — JPEG decode + downscale to 128x128 RGB565
 - [x] **Milestone 4** — Tiling, packet protocol, and transmission
-- [ ] **Milestone 5** — RTL-SDR receiver (`rx/`)
+- [x] **Milestone 5** — RTL-SDR receiver (`rx/`) — pipeline verified against
+  synthetic captures; awaiting over-the-air validation
 
 This file gets updated as milestones complete — see the section below for
 the changelog.
 
 ## Changelog
 
+- **2026-07-02** — Milestone 5: RTL-SDR receiver. rtl_433 flex decoder spec
+  (FSK_PCM, 208 us/bit, preamble+sync `aad391`) documented field-by-field in
+  `rx/run_rtl433.sh`; PN9 de-whitening and CC1101 CRC-16 verification happen
+  in Python (rtl_433 sees only whitened bits). Reassembler dedupes chunks,
+  paints completed tiles, accumulates across re-transmissions. Verified
+  end-to-end with a synthetic capture (dropped/corrupted/duplicated packets
+  behave as designed). Firmware: added CC1101 register dump, decode stats,
+  and per-tile packet-count/ETA progress lines.
 - **2026-07-02** — Milestone 4 done: full tiling + packet protocol per
   `protocol.h` (52-byte payloads, 10 chunks/tile, frame header 5x, every
   packet 3x), ~4 min per frame at 4.8 kbps. Filesystem is handed back to

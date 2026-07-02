@@ -1,0 +1,4 @@
+numpy
+pillow
+# optional, only for the --show live window:
+# opencv-python

@@ -30,7 +30,10 @@ static const char* jresultName(JRESULT r) {
 // w/h pre-clipped at image edges) — the full bitmap never sits in RAM.
 // Paint every framebuffer pixel whose nearest-neighbor source falls inside
 // this block.
+static uint32_t blocksPainted = 0;
+
 static bool blockCallback(int16_t bx, int16_t by, uint16_t bw, uint16_t bh, uint16_t* data) {
+  blocksPainted++;
   for (int fy = 0; fy < TX_H; fy++) {
     int sy = mapY[fy];
     if (sy < by || sy >= by + (int)bh) {
@@ -103,6 +106,7 @@ bool jpegDecodeToFramebuffer(fs::FS& fs, const String& path) {
   TJpgDec.setSwapBytes(false);
   TJpgDec.setCallback(blockCallback);
 
+  blocksPainted = 0;
   uint32_t t0 = millis();
   r = TJpgDec.drawFsJpg(0, 0, path, fs);  // opens its own fresh handle
   uint32_t elapsed = millis() - t0;
@@ -115,8 +119,16 @@ bool jpegDecodeToFramebuffer(fs::FS& fs, const String& path) {
 
   Serial.print(F("decode OK in "));
   Serial.print(elapsed);
-  Serial.print(F(" ms, framebuffer checksum 0x"));
+  Serial.print(F(" ms ("));
+  Serial.print(blocksPainted);
+  Serial.print(F(" MCU blocks), framebuffer checksum 0x"));
   Serial.println(jpegChecksum(), HEX);
+  Serial.print(F("fb sanity: [0]=0x"));
+  Serial.print(framebuffer[0], HEX);
+  Serial.print(F(" [center]=0x"));
+  Serial.print(framebuffer[(TX_H / 2) * TX_W + TX_W / 2], HEX);
+  Serial.print(F(" [last]=0x"));
+  Serial.println(framebuffer[TX_W * TX_H - 1], HEX);
   return true;
 }
 
