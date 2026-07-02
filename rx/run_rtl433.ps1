@@ -11,5 +11,17 @@ $flex = 'n=pixeltx,m=FSK_PCM,s=208,l=208,r=3000,preamble=aad391,bits>=80'
 $gainArgs = @()
 if ($env:GAIN) { $gainArgs = @("-g", $env:GAIN) }
 
-rtl_433 -f $freq -s 250k @gainArgs -X $flex -F json |
+# Find rtl_433: PATH first, then the default install location (a terminal
+# opened before the installer updated the user PATH won't see it there yet).
+$rtlCmd = Get-Command rtl_433 -ErrorAction SilentlyContinue
+if ($rtlCmd) {
+    $rtl = $rtlCmd.Source
+} elseif (Test-Path "$env:LOCALAPPDATA\Programs\rtl_433\rtl_433.exe") {
+    $rtl = "$env:LOCALAPPDATA\Programs\rtl_433\rtl_433.exe"
+} else {
+    Write-Error "rtl_433 not found on PATH or in $env:LOCALAPPDATA\Programs\rtl_433 - see README"
+    exit 1
+}
+
+& $rtl -f $freq -s 250k @gainArgs -X $flex -F json |
     python "$PSScriptRoot\reassemble.py" @args
